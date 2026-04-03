@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { edgeOneRequest } from '@/lib/tencentCloud';
 
 export async function GET(request: Request) {
   try {
@@ -169,24 +170,11 @@ export async function GET(request: Request) {
     // 如果提供了 SecretId 和 SecretKey，但没有提供 Zone ID，则尝试自动获取
     if (process.env.TENCENTCLOUD_SECRET_ID && process.env.TENCENTCLOUD_SECRET_KEY) {
       try {
-        // 使用动态导入避免在没有安装 SDK 时导致整个 API 崩溃
-        const tencentcloud = await import("tencentcloud-sdk-nodejs-teo");
-        const TeoClient = tencentcloud.teo.v20220901.Client;
-        
-        const client = new TeoClient({
-          credential: {
-            secretId: process.env.TENCENTCLOUD_SECRET_ID,
-            secretKey: process.env.TENCENTCLOUD_SECRET_KEY,
-          },
-          region: "ap-singapore", 
-          profile: { 
-            httpProfile: { 
-              endpoint: "teo.tencentcloudapi.com" 
-            } 
-          },
-        });
+        const secretId = process.env.TENCENTCLOUD_SECRET_ID;
+        const secretKey = process.env.TENCENTCLOUD_SECRET_KEY;
 
-        const zonesResponse = await client.DescribeZones({ Limit: 100 });
+        const zonesResponse = await edgeOneRequest("DescribeZones", { Limit: 100 }, secretId, secretKey);
+        
         if (zonesResponse.Zones && zonesResponse.Zones.length > 0) {
           teoZones = zonesResponse.Zones.map((z: any) => ({ id: z.ZoneId, name: z.ZoneName }));
           if (!teoZoneId) {
@@ -204,31 +192,31 @@ export async function GET(request: Request) {
           const formatTeoTime = (date: Date) => date.toISOString().split('.')[0] + 'Z';
           
           // 1. 获取时间序列流量数据 (请求数和带宽)
-          const timingData = await client.DescribeTimingL7AnalysisData({
+          const timingData = await edgeOneRequest("DescribeTimingL7AnalysisData", {
             ZoneIds: [teoZoneId],
             StartTime: formatTeoTime(startTime),
             EndTime: formatTeoTime(endTime),
             MetricNames: ["l7Flow_outFlux", "l7Flow_request"],
             Interval: selectedRange.interval
-          });
+          }, secretId, secretKey);
           
           // 2. 获取 Top 分析数据 (国家/地区排行)
-          const topCountryData = await client.DescribeTopL7AnalysisData({
+          const topCountryData = await edgeOneRequest("DescribeTopL7AnalysisData", {
             ZoneIds: [teoZoneId],
             StartTime: formatTeoTime(startTime),
             EndTime: formatTeoTime(endTime),
             MetricName: "l7Flow_request_country",
             Limit: 5
-          });
+          }, secretId, secretKey);
 
           // 3. 获取 Top 分析数据 (状态码)
-          const topStatusCodeData = await client.DescribeTopL7AnalysisData({
+          const topStatusCodeData = await edgeOneRequest("DescribeTopL7AnalysisData", {
             ZoneIds: [teoZoneId],
             StartTime: formatTeoTime(startTime),
             EndTime: formatTeoTime(endTime),
             MetricName: "l7Flow_request_statusCode",
             Limit: 5
-          });
+          }, secretId, secretKey);
 
           edgeOneData = {
             timing: timingData,
@@ -236,7 +224,7 @@ export async function GET(request: Request) {
             topStatusCode: topStatusCodeData
           };
           
-          console.log("EdgeOne Data Successfully Fetched");
+          console.log("EdgeOne Data Successfully Fetched via Custom Fetch");
         }
       } catch (teoError: any) {
         console.error("EdgeOne API Error:", teoError.message || teoError);
