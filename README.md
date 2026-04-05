@@ -2,6 +2,8 @@
 
 OmniMonitor 是一个现代化的全局基础设施监控大屏，旨在将多个 Serverless 与边缘计算平台（如 Vercel, Cloudflare, 腾讯云 EdgeOne）的遥测数据与性能指标聚合在同一个面板中展示。
 
+在线网站：OmniMonitor.miaizhe.xyz
+
 ## ✨ 核心特性
 
 - **多平台聚合 (Multi-provider Integration)**: 原生支持 Vercel, Cloudflare 和 Tencent EdgeOne 的数据接入。
